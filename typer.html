@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Typewriter Effect</title>
+<title>Interactive Terminal</title>
 
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Fira+Code:wght@300;400;600&display=swap');
@@ -39,9 +39,9 @@ body{
 }
 
 .dot{width:12px;height:12px;border-radius:50%}
-.red{background:#ff5f57}
-.yellow{background:#ffbd2e}
-.green{background:#28c840}
+.dot.red{background:#ff5f57}
+.dot.yellow{background:#ffbd2e}
+.dot.green{background:#28c840}
 
 .term-title{
   color:#8b949e;
@@ -52,7 +52,9 @@ body{
 
 .term-body{
   padding:24px;
-  min-height:300px
+  min-height:300px;
+  max-height:400px;
+  overflow-y:auto
 }
 
 .line{
@@ -82,7 +84,7 @@ body{
 .output{
   color:#8b949e;
   font-size:0.875rem;
-  margin-top:10px
+  margin-bottom:10px
 }
 
 .keyword{color:#ff7b72}
@@ -123,123 +125,114 @@ button:hover{background:#30363d}
     <span class="term-title">nova@studio: ~/projects</span>
   </div>
 
-  <div class="term-body">
+  <div class="term-body" id="body">
+    <div id="output"></div>
+
     <div class="line">
       <span class="prompt">❯ </span>
       <span id="main"></span>
       <span class="cursor"></span>
     </div>
-    <div id="output"></div>
   </div>
 </div>
 
 <div class="btn-row">
-  <button onclick="runNext()">▶ Run</button>
-  <button onclick="restart()">↺ Restart</button>
   <button onclick="clearTerm()">🗑 Clear</button>
+  <button onclick="restart()">↺ Restart</button>
 </div>
 
 <script>
-const sequences = [
-{
-  cmd: 'npm run build',
-  delay: 60,
-  output: `<div class="output">
+const outputDiv = document.getElementById('output');
+const main = document.getElementById('main');
+const body = document.getElementById('body');
+
+let currentInput = "";
+
+// COMMANDS
+const commands = {
+  "help": `
+Available commands:<br>
+- help<br>
+- clear<br>
+- npm run build<br>
+- git commit<br>
+- deploy<br>
+`,
+
+  "npm run build": `
 <span class="comment">// Compiling TypeScript...</span><br>
-✓ <span class="string">index.ts</span> compiled in 124ms<br>
-✓ <span class="string">components/</span> bundled (23 files)<br>
-✓ <span class="string">styles.css</span> minified → 18.4kb<br>
-<span class="keyword">Build complete</span> <span class="string">dist/</span> ready ✨
-</div>`
-},
-{
-  cmd: 'git commit -m "feat: add animation system"',
-  delay: 50,
-  output: `<div class="output">
-[main <span class="func">a3f9c12</span>] feat: add animation system<br>
-3 files changed, <span class="keyword">142 insertions</span>(+), 5 deletions(-)<br>
-create mode 100644 src/animations.ts<br>
-create mode 100644 src/transitions.ts
-</div>`
-},
-{
-  cmd: 'curl api.studio.dev/v2/deploy -X POST',
-  delay: 45,
-  output: `<div class="output">
-{<br>
-&nbsp;&nbsp;<span class="string">"status"</span>: <span class="keyword">"deployed"</span>,<br>
-&nbsp;&nbsp;<span class="string">"url"</span>: <span class="string">"https://studio.dev"</span>,<br>
-&nbsp;&nbsp;<span class="string">"version"</span>: <span class="func">"2.1.0"</span>,<br>
-&nbsp;&nbsp;<span class="string">"time"</span>: <span class="keyword">847</span><br>
-}
-</div>`
-}
-];
+✓ index.ts compiled<br>
+✓ components bundled<br>
+✓ styles.css minified<br>
+<span class="keyword">Build complete</span> ✨
+`,
 
-let seq = 0;
-let charIdx = 0;
-let timeout;
-let isTyping = false;
+  "git commit": `
+[main <span class="func">a3f9c12</span>] commit successful<br>
+3 files changed, 142 insertions(+)
+`,
 
-function typeChar() {
-  const current = sequences[seq % sequences.length];
+  "deploy": `
+Deploying...<br>
+<span class="keyword">Success 🚀</span><br>
+URL: https://studio.dev
+`
+};
 
-  if (charIdx <= current.cmd.length) {
-    document.getElementById('main').textContent =
-      current.cmd.slice(0, charIdx);
+// KEYBOARD INPUT
+document.addEventListener("keydown", (e) => {
 
-    charIdx++;
-    timeout = setTimeout(typeChar, current.delay);
-  } else {
-    setTimeout(showOutput, 400);
+  if (e.key.length === 1 && !e.ctrlKey) {
+    currentInput += e.key;
+  } 
+  else if (e.key === "Backspace") {
+    currentInput = currentInput.slice(0, -1);
+  } 
+  else if (e.key === "Enter") {
+    runCommand(currentInput.trim());
+    currentInput = "";
   }
+
+  main.textContent = currentInput;
+});
+
+// RUN COMMAND
+function runCommand(cmd) {
+
+  // Show command line
+  const cmdLine = document.createElement("div");
+  cmdLine.className = "line";
+  cmdLine.innerHTML = `<span class="prompt">❯ </span>${cmd}`;
+  outputDiv.appendChild(cmdLine);
+
+  // Handle clear
+  if (cmd === "clear") {
+    outputDiv.innerHTML = "";
+    return;
+  }
+
+  // Output result
+  const div = document.createElement("div");
+  div.className = "output";
+
+  div.innerHTML = commands[cmd] || "Command not found ❌";
+
+  outputDiv.appendChild(div);
+
+  // Auto scroll
+  body.scrollTop = body.scrollHeight;
 }
 
-function showOutput() {
-  const out = document.getElementById('output');
-
-  const div = document.createElement('div');
-  div.style.opacity = '0';
-  div.style.transition = 'opacity 0.4s';
-  div.innerHTML = sequences[seq % sequences.length].output;
-
-  out.appendChild(div);
-
-  requestAnimationFrame(() => div.style.opacity = '1');
-
-  seq++;
-  isTyping = false;
-
-  // AUTO RUN NEXT
-  setTimeout(runNext, 800);
-}
-
-function runNext() {
-  if (isTyping) return;
-
-  clearTimeout(timeout);
-  charIdx = 0;
-  document.getElementById('main').textContent = '';
-
-  isTyping = true;
-  typeChar();
+// BUTTONS
+function clearTerm() {
+  outputDiv.innerHTML = "";
 }
 
 function restart() {
-  clearTimeout(timeout);
-  seq = 0;
-  charIdx = 0;
-  isTyping = false;
-  document.getElementById('main').textContent = '';
-  document.getElementById('output').innerHTML = '';
+  outputDiv.innerHTML = "";
+  currentInput = "";
+  main.textContent = "";
 }
-
-function clearTerm() {
-  document.getElementById('output').innerHTML = '';
-}
-
-// AUTO START
-setTimeout(runNext, 600);
 </script>
 
 </body>
