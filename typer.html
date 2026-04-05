@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Typewriter Effect</title>
+
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Fira+Code:wght@300;400;600&display=swap');
+
+*{margin:0;padding:0;box-sizing:border-box}
+
+body{
+  background:#0a0a0a;
+  min-height:100vh;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  font-family:'Fira Code',monospace;
+  padding:40px
+}
+
+.terminal{
+  background:#0d1117;
+  border:1px solid #30363d;
+  border-radius:12px;
+  width:100%;
+  max-width:700px;
+  overflow:hidden
+}
+
+.term-bar{
+  background:#1f2328;
+  padding:12px 16px;
+  display:flex;
+  align-items:center;
+  gap:8px
+}
+
+.dot{width:12px;height:12px;border-radius:50%}
+.red{background:#ff5f57}
+.yellow{background:#ffbd2e}
+.green{background:#28c840}
+
+.term-title{
+  color:#8b949e;
+  font-size:0.75rem;
+  margin-left:auto;
+  margin-right:auto
+}
+
+.term-body{
+  padding:24px;
+  min-height:300px
+}
+
+.line{
+  color:#e6edf3;
+  font-size:1rem;
+  line-height:1.8;
+  min-height:1.8em
+}
+
+.prompt{color:#7ee787}
+
+.cursor{
+  display:inline-block;
+  width:2px;
+  height:1.1em;
+  background:#e6edf3;
+  animation:blink 1s step-end infinite;
+  vertical-align:text-bottom;
+  margin-left:2px
+}
+
+@keyframes blink{
+  0%,100%{opacity:1}
+  50%{opacity:0}
+}
+
+.output{
+  color:#8b949e;
+  font-size:0.875rem;
+  margin-top:10px
+}
+
+.keyword{color:#ff7b72}
+.string{color:#a5d6ff}
+.func{color:#d2a8ff}
+.comment{color:#8b949e}
+
+.btn-row{
+  display:flex;
+  gap:10px;
+  margin-top:20px;
+  justify-content:center
+}
+
+button{
+  background:#21262d;
+  border:1px solid #30363d;
+  color:#e6edf3;
+  padding:8px 20px;
+  border-radius:6px;
+  cursor:pointer;
+  font-family:'Fira Code';
+  font-size:0.8rem;
+  transition:all 0.3s
+}
+
+button:hover{background:#30363d}
+</style>
+</head>
+
+<body>
+
+<div class="terminal">
+  <div class="term-bar">
+    <div class="dot red"></div>
+    <div class="dot yellow"></div>
+    <div class="dot green"></div>
+    <span class="term-title">nova@studio: ~/projects</span>
+  </div>
+
+  <div class="term-body">
+    <div class="line">
+      <span class="prompt">❯ </span>
+      <span id="main"></span>
+      <span class="cursor"></span>
+    </div>
+    <div id="output"></div>
+  </div>
+</div>
+
+<div class="btn-row">
+  <button onclick="runNext()">▶ Run</button>
+  <button onclick="restart()">↺ Restart</button>
+  <button onclick="clearTerm()">🗑 Clear</button>
+</div>
+
+<script>
+const sequences = [
+{
+  cmd: 'npm run build',
+  delay: 60,
+  output: `<div class="output">
+<span class="comment">// Compiling TypeScript...</span><br>
+✓ <span class="string">index.ts</span> compiled in 124ms<br>
+✓ <span class="string">components/</span> bundled (23 files)<br>
+✓ <span class="string">styles.css</span> minified → 18.4kb<br>
+<span class="keyword">Build complete</span> <span class="string">dist/</span> ready ✨
+</div>`
+},
+{
+  cmd: 'git commit -m "feat: add animation system"',
+  delay: 50,
+  output: `<div class="output">
+[main <span class="func">a3f9c12</span>] feat: add animation system<br>
+3 files changed, <span class="keyword">142 insertions</span>(+), 5 deletions(-)<br>
+create mode 100644 src/animations.ts<br>
+create mode 100644 src/transitions.ts
+</div>`
+},
+{
+  cmd: 'curl api.studio.dev/v2/deploy -X POST',
+  delay: 45,
+  output: `<div class="output">
+{<br>
+&nbsp;&nbsp;<span class="string">"status"</span>: <span class="keyword">"deployed"</span>,<br>
+&nbsp;&nbsp;<span class="string">"url"</span>: <span class="string">"https://studio.dev"</span>,<br>
+&nbsp;&nbsp;<span class="string">"version"</span>: <span class="func">"2.1.0"</span>,<br>
+&nbsp;&nbsp;<span class="string">"time"</span>: <span class="keyword">847</span><br>
+}
+</div>`
+}
+];
+
+let seq = 0;
+let charIdx = 0;
+let timeout;
+let isTyping = false;
+
+function typeChar() {
+  const current = sequences[seq % sequences.length];
+
+  if (charIdx <= current.cmd.length) {
+    document.getElementById('main').textContent =
+      current.cmd.slice(0, charIdx);
+
+    charIdx++;
+    timeout = setTimeout(typeChar, current.delay);
+  } else {
+    setTimeout(showOutput, 400);
+  }
+}
+
+function showOutput() {
+  const out = document.getElementById('output');
+
+  const div = document.createElement('div');
+  div.style.opacity = '0';
+  div.style.transition = 'opacity 0.4s';
+  div.innerHTML = sequences[seq % sequences.length].output;
+
+  out.appendChild(div);
+
+  requestAnimationFrame(() => div.style.opacity = '1');
+
+  seq++;
+  isTyping = false;
+
+  // AUTO RUN NEXT
+  setTimeout(runNext, 800);
+}
+
+function runNext() {
+  if (isTyping) return;
+
+  clearTimeout(timeout);
+  charIdx = 0;
+  document.getElementById('main').textContent = '';
+
+  isTyping = true;
+  typeChar();
+}
+
+function restart() {
+  clearTimeout(timeout);
+  seq = 0;
+  charIdx = 0;
+  isTyping = false;
+  document.getElementById('main').textContent = '';
+  document.getElementById('output').innerHTML = '';
+}
+
+function clearTerm() {
+  document.getElementById('output').innerHTML = '';
+}
+
+// AUTO START
+setTimeout(runNext, 600);
+</script>
+
+</body>
+</html>
