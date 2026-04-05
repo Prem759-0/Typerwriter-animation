@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Interactive Terminal</title>
+<title>Animated Terminal</title>
 
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Fira+Code:wght@300;400;600&display=swap');
@@ -14,54 +14,43 @@ body{
   background:#0a0a0a;
   min-height:100vh;
   display:flex;
-  flex-direction:column;
-  align-items:center;
   justify-content:center;
+  align-items:center;
   font-family:'Fira Code',monospace;
-  padding:40px
 }
 
 .terminal{
-  background:#0d1117;
-  border:1px solid #30363d;
-  border-radius:12px;
   width:100%;
-  max-width:700px;
-  overflow:hidden
+  max-width:750px;
+  background:#0d1117;
+  border-radius:12px;
+  border:1px solid #30363d;
+  overflow:hidden;
+  cursor:text;
 }
 
 .term-bar{
   background:#1f2328;
-  padding:12px 16px;
+  padding:12px;
   display:flex;
-  align-items:center;
-  gap:8px
+  gap:8px;
 }
 
 .dot{width:12px;height:12px;border-radius:50%}
-.dot.red{background:#ff5f57}
-.dot.yellow{background:#ffbd2e}
-.dot.green{background:#28c840}
-
-.term-title{
-  color:#8b949e;
-  font-size:0.75rem;
-  margin-left:auto;
-  margin-right:auto
-}
+.red{background:#ff5f57}
+.yellow{background:#ffbd2e}
+.green{background:#28c840}
 
 .term-body{
-  padding:24px;
-  min-height:300px;
+  padding:20px;
+  min-height:350px;
   max-height:400px;
-  overflow-y:auto
+  overflow-y:auto;
 }
 
 .line{
   color:#e6edf3;
-  font-size:1rem;
   line-height:1.8;
-  min-height:1.8em
 }
 
 .prompt{color:#7ee787}
@@ -71,9 +60,7 @@ body{
   width:2px;
   height:1.1em;
   background:#e6edf3;
-  animation:blink 1s step-end infinite;
-  vertical-align:text-bottom;
-  margin-left:2px
+  animation:blink 1s infinite;
 }
 
 @keyframes blink{
@@ -83,46 +70,29 @@ body{
 
 .output{
   color:#8b949e;
-  font-size:0.875rem;
-  margin-bottom:10px
+  opacity:0;
+  transform:translateY(5px);
+  animation:fade 0.4s forwards;
+}
+
+@keyframes fade{
+  to{opacity:1; transform:translateY(0);}
 }
 
 .keyword{color:#ff7b72}
 .string{color:#a5d6ff}
 .func{color:#d2a8ff}
 .comment{color:#8b949e}
-
-.btn-row{
-  display:flex;
-  gap:10px;
-  margin-top:20px;
-  justify-content:center
-}
-
-button{
-  background:#21262d;
-  border:1px solid #30363d;
-  color:#e6edf3;
-  padding:8px 20px;
-  border-radius:6px;
-  cursor:pointer;
-  font-family:'Fira Code';
-  font-size:0.8rem;
-  transition:all 0.3s
-}
-
-button:hover{background:#30363d}
 </style>
 </head>
 
 <body>
 
-<div class="terminal">
+<div class="terminal" id="terminal">
   <div class="term-bar">
     <div class="dot red"></div>
     <div class="dot yellow"></div>
     <div class="dot green"></div>
-    <span class="term-title">nova@studio: ~/projects</span>
   </div>
 
   <div class="term-body" id="body">
@@ -130,108 +100,81 @@ button:hover{background:#30363d}
 
     <div class="line">
       <span class="prompt">❯ </span>
-      <span id="main"></span>
-      <span class="cursor"></span>
+      <span id="input"></span><span class="cursor"></span>
     </div>
   </div>
 </div>
 
-<div class="btn-row">
-  <button onclick="clearTerm()">🗑 Clear</button>
-  <button onclick="restart()">↺ Restart</button>
-</div>
-
 <script>
-const outputDiv = document.getElementById('output');
-const main = document.getElementById('main');
-const body = document.getElementById('body');
+const terminal = document.getElementById("terminal");
+const inputEl = document.getElementById("input");
+const outputEl = document.getElementById("output");
+const body = document.getElementById("body");
 
-let currentInput = "";
+let input = "";
+let isFocused = true;
 
 // COMMANDS
 const commands = {
-  "help": `
-Available commands:<br>
-- help<br>
-- clear<br>
-- npm run build<br>
-- git commit<br>
-- deploy<br>
-`,
-
-  "npm run build": `
-<span class="comment">// Compiling TypeScript...</span><br>
-✓ index.ts compiled<br>
-✓ components bundled<br>
-✓ styles.css minified<br>
-<span class="keyword">Build complete</span> ✨
-`,
-
-  "git commit": `
-[main <span class="func">a3f9c12</span>] commit successful<br>
-3 files changed, 142 insertions(+)
-`,
-
-  "deploy": `
-Deploying...<br>
-<span class="keyword">Success 🚀</span><br>
-URL: https://studio.dev
-`
+  "help": "Available: help, clear, build, deploy, hello",
+  "build": "⚙️ Building project... Done ✔",
+  "deploy": "🚀 Deploying... Live at https://site.dev",
+  "hello": "Hi Prem 😏 Welcome back dev!"
 };
 
-// KEYBOARD INPUT
+// CLICK TO FOCUS
+terminal.addEventListener("click", () => {
+  isFocused = true;
+});
+
+// TYPING
 document.addEventListener("keydown", (e) => {
+  if (!isFocused) return;
 
   if (e.key.length === 1 && !e.ctrlKey) {
-    currentInput += e.key;
+    input += e.key;
+    animateTyping();
   } 
   else if (e.key === "Backspace") {
-    currentInput = currentInput.slice(0, -1);
+    input = input.slice(0, -1);
+    inputEl.textContent = input;
   } 
   else if (e.key === "Enter") {
-    runCommand(currentInput.trim());
-    currentInput = "";
+    runCommand(input.trim());
+    input = "";
+    inputEl.textContent = "";
   }
-
-  main.textContent = currentInput;
 });
+
+// TYPING ANIMATION
+function animateTyping() {
+  inputEl.style.transform = "scale(1.05)";
+  setTimeout(()=> inputEl.style.transform="scale(1)",100);
+  inputEl.textContent = input;
+}
 
 // RUN COMMAND
 function runCommand(cmd) {
 
-  // Show command line
-  const cmdLine = document.createElement("div");
-  cmdLine.className = "line";
-  cmdLine.innerHTML = `<span class="prompt">❯ </span>${cmd}`;
-  outputDiv.appendChild(cmdLine);
+  // show typed line
+  const line = document.createElement("div");
+  line.className = "line";
+  line.innerHTML = `<span class="prompt">❯ </span>${cmd}`;
+  outputEl.appendChild(line);
 
-  // Handle clear
   if (cmd === "clear") {
-    outputDiv.innerHTML = "";
+    outputEl.innerHTML = "";
     return;
   }
 
-  // Output result
-  const div = document.createElement("div");
-  div.className = "output";
+  // output
+  const out = document.createElement("div");
+  out.className = "output";
+  out.innerHTML = commands[cmd] || "Command not found ❌";
+  outputEl.appendChild(out);
 
-  div.innerHTML = commands[cmd] || "Command not found ❌";
-
-  outputDiv.appendChild(div);
-
-  // Auto scroll
+  // auto scroll
   body.scrollTop = body.scrollHeight;
-}
-
-// BUTTONS
-function clearTerm() {
-  outputDiv.innerHTML = "";
-}
-
-function restart() {
-  outputDiv.innerHTML = "";
-  currentInput = "";
-  main.textContent = "";
 }
 </script>
 
